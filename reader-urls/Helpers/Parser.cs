@@ -1,33 +1,61 @@
 using System.Text.RegularExpressions;
+using reader_urls.Models;
 
 namespace reader_urls.Helpers;
 
-public static class Parser
+public static partial class Parser
 {
-    public static List<string> ParseChapterLinks(string html)
+    public static List<ParsedChapter> ParseChapterLinks(string html)
     {
-        // Регулярное выражение для извлечения ссылок
-        // (?i)          : игнорировать регистр (A-Z = a-z)
-        // <a\s+         : тег <a и хотя бы один пробел
-        // [^>]*?        : любые символы, кроме '>', не жадно (чтобы не перескочить на другой тег)
-        // href=['""]    : атрибут href=" или href='
-        // (['""]?)      : (необязательно) захват типа кавычки, чтобы закрыть её такой же
-        // ([^'""]+)     : ГРУППА 1: захватываем саму ссылку (всё, что не является кавычкой)
-        // ['""]         : закрывающая кавычка
-        const string pattern = @"(?i)<a\s+[^>]*?href=[""']([^""']+)[""']\s+[^>]*?class=""chapter-link cp-l""";
-
-        var links = new List<string>();
+        var d = new Dictionary<string, string>();
 
         // Находим все совпадения
-        var matches = Regex.Matches(html, pattern);
+        var matches = ChapterLinksRegex().Matches(html);
 
         foreach (Match match in matches)
         {
-            // Groups[1] содержит значение, попавшее в первые скобки ([^""']+)
             var link = match.Groups[1].Value;
-            links.Add(link);
+            var text = match.Groups[2].Value;
+            d.Add(text.Trim(), link);
         }
 
-        return links;
+        return d.Reverse()
+                .Select((x, i) => new ParsedChapter(i, x.Key, x.Value))
+                .ToList();
     }
+
+    public static List<string> ParseImagesFromChapter(string html)
+    {
+        var result = new List<string>();
+
+        // Находим все совпадения
+        var matches = ImagesFromChapterRegex().Matches(html);
+
+        foreach (Match match in matches)
+        {
+            var array = match.Groups[1].Value;
+            var images = array[2..^2].Split("],[");
+
+            foreach (var i in images)
+            {
+                var parts = i.Split(",");
+                var baseUrl = parts[0][1..^1];
+                var pathUrl = parts[2][1..^1];
+
+                if (pathUrl.Contains('?'))
+                    pathUrl = pathUrl.Split("?")[0];
+
+                var url = baseUrl + pathUrl;
+                result.Add(url);
+            }
+        }
+
+        return result;
+    }
+
+    [GeneratedRegex(@"(?i)<a\s+[^>]*?href=[""']([^""']+)[""']\s+[^>]*?class=""chapter-link cp-l"">([^>]+)</a>", RegexOptions.None, "ru-RU")]
+    private static partial Regex ChapterLinksRegex();
+
+    [GeneratedRegex(@"(?i)readerInit.+(\[\[.+\]\])", RegexOptions.None, "ru-RU")]
+    private static partial Regex ImagesFromChapterRegex();
 }

@@ -10,8 +10,16 @@ public static class Downloader
         httpClient.DefaultRequestHeaders.Add("Referer", domain);
     }
 
-    public static Task<string> ReadHtml(string url)
+    public static async Task<(bool, string)> ReadHtml(string url)
     {
-        return httpClient.GetStringAsync(url);
+        try
+        {
+            return (true, await httpClient.GetStringAsync(url));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Возникла ошибка при скачивании {url} ({ex.Message})");
+            return (false, string.Empty);
+        }
     }
 }
