@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Просмотр манхвы</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: #0f0f0f;
+            padding: 12px 20px;
+            border-bottom: 1px solid #333;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        header h1 {
+            font-size: 18px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .chapter-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .chapter-controls label {
+            font-size: 14px;
+            color: #aaa;
+        }
+
+        .chapter-controls select,
+        .chapter-controls input {
+            background-color: #2a2a2a;
+            color: #e0e0e0;
+            border: 1px solid #444;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .chapter-controls input {
+            width: 70px;
+        }
+
+        .chapter-controls button {
+            background-color: #2a2a2a;
+            color: #e0e0e0;
+            border: 1px solid #444;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .chapter-controls button:hover {
+            background-color: #3a3a3a;
+        }
+
+        .reader {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px 10px;
+        }
+
+        .reader img {
+            display: block;
+            width: 100%;
+            height: auto;
+            background-color: #2a2a2a;
+        }
+
+        .chapter-nav {
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 16px 10px;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            border-top: 1px solid #333;
+        }
+
+        .chapter-nav a {
+            background-color: #2a2a2a;
+            color: #e0e0e0;
+            border: 1px solid #444;
+            padding: 10px 18px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+
+        .chapter-nav a:hover {
+            background-color: #3a3a3a;
+        }
+
+        .chapter-nav a.disabled {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+
+        .float-controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 20;
+        }
+
+        .float-controls button {
+            background-color: #2a2a2a;
+            color: #e0e0e0;
+            border: 1px solid #444;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .float-controls button:hover {
+            background-color: #3a3a3a;
+        }
+
+        .loading, .error {
+            text-align: center;
+            padding: 40px 20px;
+            color: #888;
+            font-size: 16px;
+        }
+
+        .error {
+            color: #ff6b6b;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1 id="title">Манхва</h1>
+        <div class="chapter-controls">
+            <label for="chapterSelect">Глава:</label>
+            <select id="chapterSelect" disabled>
+                <option>Загрузка...</option>
+            </select>
+        </div>
+    </header>
+
+    <main class="reader" id="reader">
+        <div class="loading">Загрузка списка глав...</div>
+    </main>
+
+    <nav class="chapter-nav" id="chapterNav" style="display: none;">
+        <a id="prevChapter" href="#">← Предыдущая</a>
+        <a id="nextChapter" href="#">Следующая →</a>
+    </nav>
+
+    <div class="float-controls">
+        <button onclick="window.scrollTo({top: 0, behavior: 'smooth'})" title="В начало">↑</button>
+        <button onclick="window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'})" title="В конец">↓</button>
+    </div>
+
+    <footer id="footer"></footer>
+
+    <script src="info.js"></script>
+    <script>
+        const BASE_PATH = "";
+
+        let chapters = manga.chapters;
+        let currentChapterIndex = 0;
+
+        initUI();
+
+        function initUI() {
+            const chapterSelect = document.getElementById('chapterSelect');
+            chapterSelect.innerHTML = '';
+            chapterSelect.disabled = false;
+
+            // Определяем текущую главу из URL
+            const params = new URLSearchParams(window.location.search);
+            const chapterId = params.get('ch');
+            
+            // Ищем главу по index или по порядковому номеру
+            let foundIndex = -1;
+            if (chapterId !== null) {
+                const numId = parseInt(chapterId, 10);
+                foundIndex = chapters.findIndex(ch => ch.index === numId);
+            }
+            
+            currentChapterIndex = foundIndex >= 0 ? foundIndex : 0;
+
+            // Заполняем select
+            chapters.forEach((chapter, idx) => {
+                const option = document.createElement('option');
+                option.value = idx;
+                option.textContent = chapter.title || `Глава ${chapter.index}`;
+                if (idx === currentChapterIndex) option.selected = true;
+                chapterSelect.appendChild(option);
+            });
+
+            chapterSelect.addEventListener('change', (e) => {
+                goToChapterByIndex(parseInt(e.target.value, 10));
+            });
+
+            // Загружаем текущую главу
+            loadCurrentChapter();
+        }
+
+        function goToChapterByIndex(idx) {
+            if (idx < 0 || idx >= chapters.length) return;
+            const chapter = chapters[idx];
+            // Переход с параметром ?ch={index}
+            const url = `${window.location.pathname}?ch=${chapter.index}`;
+            window.location.href = url;
+        }
+
+        function loadCurrentChapter() {
+            const chapter = chapters[currentChapterIndex];
+            if (!chapter) return;
+
+            // Обновляем заголовок
+            document.getElementById('title').textContent = chapter.title || `Глава ${chapter.index}`;
+            document.title = chapter.title || `Манхва — Глава ${chapter.index}`;
+
+            // Обновляем навигацию
+            updateNavigation();
+
+            // Загружаем изображения
+            const reader = document.getElementById('reader');
+            reader.innerHTML = '';
+
+            if (!chapter.images || chapter.images.length === 0) {
+                reader.innerHTML = '<div class="loading">В этой главе нет изображений</div>';
+                return;
+            }
+
+            chapter.images.forEach((imageName, idx) => {
+                const img = document.createElement('img');
+                // Путь: {BASE_PATH}{chapter.index}/{imageName}
+                img.src = `${BASE_PATH}${chapter.index}/${imageName}`;
+                img.alt = `Страница ${idx + 1}`;
+                img.loading = 'lazy';
+                img.onerror = () => {
+                    img.style.display = 'none';
+                };
+                reader.appendChild(img);
+            });
+
+            // Обновляем футер
+            document.getElementById('footer').textContent = 
+                `Страниц в главе: ${chapter.images.length} | Глава ${currentChapterIndex + 1} из ${chapters.length}`;
+        }
+
+        function updateNavigation() {
+            const nav = document.getElementById('chapterNav');
+            const prevLink = document.getElementById('prevChapter');
+            const nextLink = document.getElementById('nextChapter');
+
+            nav.style.display = 'flex';
+
+            // Предыдущая
+            if (currentChapterIndex > 0) {
+                const prevChapter = chapters[currentChapterIndex - 1];
+                prevLink.href = `?ch=${prevChapter.index}`;
+                prevLink.textContent = `← ${prevChapter.title || 'Предыдущая'}`;
+                prevLink.classList.remove('disabled');
+            } else {
+                prevLink.href = '#';
+                prevLink.textContent = '← Предыдущая';
+                prevLink.classList.add('disabled');
+            }
+
+            // Следующая
+            if (currentChapterIndex < chapters.length - 1) {
+                const nextChapter = chapters[currentChapterIndex + 1];
+                nextLink.href = `?ch=${nextChapter.index}`;
+                nextLink.textContent = `${nextChapter.title || 'Следующая'} →`;
+                nextLink.classList.remove('disabled');
+            } else {
+                nextLink.href = '#';
+                nextLink.textContent = 'Следующая →';
+                nextLink.classList.add('disabled');
+            }
+        }
+    </script>
+</body>
+</html>
