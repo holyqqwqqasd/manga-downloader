@@ -2,7 +2,12 @@
 using System.Text.Json;
 using create_web_reader.Models;
 
-var manga = JsonSerializer.Deserialize<MangaModel>(File.ReadAllText("..\\manga.json"));
+var options = new JsonSerializerOptions
+{
+    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    WriteIndented = true
+};
+var manga = JsonSerializer.Deserialize<MangaModel>(File.ReadAllText("..\\manga.json"), options);
 var webManga = new MangaModel([]);
 
 foreach (var ch in manga!.Chapters)
@@ -18,11 +23,6 @@ foreach (var ch in manga!.Chapters)
     webManga.Chapters.Add(chapter);
 }
 
-var options = new JsonSerializerOptions
-{
-    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    WriteIndented = true
-};
 var json = JsonSerializer.Serialize(webManga, options);
 File.WriteAllText(
     "..\\manga\\info.js",
