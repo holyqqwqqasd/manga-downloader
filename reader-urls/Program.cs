@@ -4,7 +4,7 @@ using reader_urls.Helpers;
 using reader_urls.Models;
 
 var baseUrl = "https://3.readmanga.ru";
-var mangaUrl = $"{baseUrl}/rycar__jivuchii_odnim_dnem";
+var mangaUrl = $"{baseUrl}/dvorianstvo__A5664";
 
 Downloader.Init($"{baseUrl}/");
 
@@ -42,4 +42,9 @@ await Parallel.ForEachAsync(chapters, parallelOptions, async (item, cancellation
 
 var manga = new MangaModel([.. concurrentList.OrderBy(x => x.Index)]);
 
-File.WriteAllText("..\\manga.json", JsonSerializer.Serialize(manga));
+var options = new JsonSerializerOptions
+{
+    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    WriteIndented = true
+};
+File.WriteAllText("..\\manga.json", JsonSerializer.Serialize(manga, options));
